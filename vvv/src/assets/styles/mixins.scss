@@ -1,0 +1,73 @@
+// 大屏适配
+@mixin large-screen-adapter {
+  @media (min-width: $screen-2k) {
+    font-size: 18px;
+  }
+
+  @media (min-width: $screen-4k) {
+    font-size: 24px;
+  }
+}
+
+// Flex布局
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// 按钮触控优化
+@mixin touch-button {
+  min-width: 120px;
+  min-height: 60px;
+  font-size: 24px;
+  padding: 15px 30px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// 卡片样式
+@mixin card-style {
+  background: $card-background;
+  border-radius: $border-radius-lg;
+  padding: $spacing-lg;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+// 响应式容器
+@mixin responsive-container {
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  padding: 0 $spacing-lg;
+
+  @media (min-width: $screen-2k) {
+    max-width: 2560px;
+    padding: 0 $spacing-xl;
+  }
+
+  @media (min-width: $screen-4k) {
+    max-width: 3840px;
+    padding: 32px;
+  }
+}
