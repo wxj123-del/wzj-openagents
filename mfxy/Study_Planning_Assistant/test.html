@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDK测试页面</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f7fa;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      color: #4A90E2;
+      margin-bottom: 20px;
+    }
+
+    .test-item {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+    }
+
+    .test-item.success {
+      background: #e8f5e9;
+      border-color: #4caf50;
+    }
+
+    .test-item.error {
+      background: #ffebee;
+      border-color: #f44336;
+    }
+
+    .test-item.warning {
+      background: #fff3e0;
+      border-color: #ff9800;
+    }
+
+    .status {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .success { color: #4caf50; }
+    .error { color: #f44336; }
+    .warning { color: #ff9800; }
+
+    button {
+      background: #4A90E2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #357ABD;
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    #avatar-test {
+      width: 400px;
+      height: 300px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+      margin: 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 SDK测试页面</h1>
+
+    <div class="test-item" id="test-sdk">
+      <div class="status">测试1: SDK加载</div>
+      <div id="sdk-result">检测中...</div>
+    </div>
+
+    <div class="test-item" id="test-config">
+      <div class="status">测试2: 配置文件</div>
+      <div id="config-result">检测中...</div>
+    </div>
+
+    <div class="test-item" id="test-keys">
+      <div class="status">测试3: 密钥配置</div>
+      <div id="keys-result">检测中...</div>
+    </div>
+
+    <div class="test-item" id="test-browser">
+      <div class="status">测试4: 浏览器环境</div>
+      <div id="browser-result">检测中...</div>
+    </div>
+
+    <div class="test-item" id="test-api">
+      <div class="status">测试5: 魔搭API连接</div>
+      <div id="api-result">
+        <button onclick="testModelScopeAPI()">测试API连接</button>
+      </div>
+    </div>
+
+    <div class="test-item" id="test-avatar">
+      <div class="status">测试6: 数字人连接</div>
+      <div>
+        <button onclick="testAvatarConnect()">测试连接数字人</button>
+        <button onclick="testAvatarSpeak()" disabled id="speak-btn">测试说话</button>
+        <button onclick="testAvatarDisconnect()" disabled id="disconnect-btn">断开连接</button>
+      </div>
+      <div id="avatar-test">数字人区域</div>
+      <div id="avatar-result"></div>
+    </div>
+
+    <div class="test-item">
+      <div class="status">完整诊断信息</div>
+      <button onclick="showFullDiagnostic()">显示完整诊断</button>
+      <pre id="full-diagnostic" style="display:none;"></pre>
+    </div>
+  </div>
+
+  <script src="https://media.xingyun3d.com/xingyun3d/general/litesdk/xmovAvatar@latest.js"></script>
+  <script src="config.js"></script>
+
+  <script>
+    let testAvatar = null;
+
+    // 测试1: SDK加载
+    function testSDK() {
+      const container = document.getElementById('test-sdk');
+      const result = document.getElementById('sdk-result');
+
+      if (typeof XmovAvatar !== 'undefined') {
+        container.className = 'test-item success';
+        result.innerHTML = '<span class="success">✓ SDK已加载</span><br>版本: ' + (XmovAvatar.version || '未知');
+        return true;
+      } else {
+        container.className = 'test-item error';
+        result.innerHTML = '<span class="error">✗ SDK未加载</span><br>请检查网络连接或刷新页面';
+        return false;
+      }
+    }
+
+    // 测试2: 配置文件
+    function testConfig() {
+      const container = document.getElementById('test-config');
+      const result = document.getElementById('config-result');
+
+      if (typeof CONFIG !== 'undefined') {
+        container.className = 'test-item success';
+        result.innerHTML = '<span class="success">✓ 配置已加载</span>';
+        return true;
+      } else {
+        container.className = 'test-item error';
+        result.innerHTML = '<span class="error">✗ 配置未加载</span>';
+        return false;
+      }
+    }
+
+    // 测试3: 密钥配置
+    function testKeys() {
+      const container = document.getElementById('test-keys');
+      const result = document.getElementById('keys-result');
+
+      if (typeof CONFIG === 'undefined' || !CONFIG.TEST_KEYS) {
+        container.className = 'test-item error';
+        result.innerHTML = '<span class="error">✗ 密钥配置不存在</span>';
+        return false;
+      }
+
+      const keys = CONFIG.TEST_KEYS;
+      const hasAppId = !!keys.xingyun_appId;
+      const hasSecret = !!keys.xingyun_appSecret;
+      const hasApiKey = !!keys.modelscope_api_key;
+
+      if (hasAppId && hasSecret && hasApiKey) {
+        container.className = 'test-item success';
+        result.innerHTML = '<span class="success">✓ 密钥配置完整</span><br>' +
+          'App ID: ' + keys.xingyun_appId + '<br>' +
+          'Secret: ' + (hasSecret ? '已配置' : '未配置') + '<br>' +
+          'API Key: ' + (hasApiKey ? '已配置' : '未配置');
+        return true;
+      } else {
+        container.className = 'test-item warning';
+        result.innerHTML = '<span class="warning">⚠ 密钥配置不完整</span><br>' +
+          'App ID: ' + (hasAppId ? '已配置' : '未配置') + '<br>' +
+          'Secret: ' + (hasSecret ? '已配置' : '未配置') + '<br>' +
+          'API Key: ' + (hasApiKey ? '已配置' : '未配置');
+        return false;
+      }
+    }
+
+    // 测试4: 浏览器环境
+    function testBrowser() {
+      const container = document.getElementById('test-browser');
+      const result = document.getElementById('browser-result');
+
+      const info = [];
+      let allGood = true;
+
+      // 检查localStorage
+      if (typeof localStorage !== 'undefined') {
+        info.push('✓ LocalStorage 支持');
+      } else {
+        info.push('✗ LocalStorage 不支持');
+        allGood = false;
+      }
+
+      // 检查Fetch API
+      if (typeof fetch !== 'undefined') {
+        info.push('✓ Fetch API 支持');
+      } else {
+        info.push('✗ Fetch API 不支持');
+        allGood = false;
+      }
+
+      // 检查WebGL
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        info.push('✓ WebGL 支持');
+      } else {
+        info.push('✗ WebGL 不支持');
+        allGood = false;
+      }
+
+      // 浏览器信息
+      info.push('<br>浏览器: ' + navigator.userAgent);
+
+      container.className = allGood ? 'test-item success' : 'test-item warning';
+      result.innerHTML = info.join('<br>');
+      return allGood;
+    }
+
+    // 测试5: 魔搭API
+    async function testModelScopeAPI() {
+      const result = document.getElementById('api-result');
+      result.innerHTML = '测试中...<br>连接到: ' + CONFIG.MODELSCOPE.API_BASE;
+
+      try {
+        const url = CONFIG.MODELSCOPE.API_BASE + CONFIG.MODELSCOPE.CHAT_ENDPOINT;
+        console.log('测试API地址:', url);
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + CONFIG.TEST_KEYS.modelscope_api_key
+          },
+          body: JSON.stringify({
+            model: CONFIG.MODELSCOPE.DEFAULT_MODEL,
+            messages: [{role: 'user', content: '你好'}],
+            stream: false
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          result.innerHTML = '<span class="success">✓ API连接成功</span><br>' +
+            '回复: ' + (data.choices?.[0]?.message?.content || '无');
+          document.getElementById('test-api').className = 'test-item success';
+        } else {
+          throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+        }
+      } catch (error) {
+        result.innerHTML = '<span class="error">✗ API连接失败</span><br>' +
+          '错误: ' + error.message;
+        document.getElementById('test-api').className = 'test-item error';
+      }
+    }
+
+    // 测试6: 数字人连接
+    async function testAvatarConnect() {
+      const result = document.getElementById('avatar-result');
+      result.innerHTML = '连接中...';
+
+      try {
+        testAvatar = new XmovAvatar({
+          containerId: '#avatar-test',  // 注意：需要带 # 前缀
+          appId: CONFIG.TEST_KEYS.xingyun_appId,
+          appSecret: CONFIG.TEST_KEYS.xingyun_appSecret,
+          gatewayServer: CONFIG.XINGYUN.GATEWAY_SERVER,
+          onMessage: (msg) => console.log('SDK消息:', msg),
+          onStateChange: (state) => console.log('状态变化:', state),
+          enableLogger: true
+        });
+
+        await testAvatar.init({
+          onDownloadProgress: (progress) => {
+            result.innerHTML = '加载资源: ' + progress + '%';
+          }
+        });
+
+        result.innerHTML = '<span class="success">✓ 数字人已连接</span>';
+        document.getElementById('test-avatar').className = 'test-item success';
+        document.getElementById('speak-btn').disabled = false;
+        document.getElementById('disconnect-btn').disabled = false;
+      } catch (error) {
+        result.innerHTML = '<span class="error">✗ 连接失败</span><br>' +
+          '错误: ' + error.message;
+        document.getElementById('test-avatar').className = 'test-item error';
+      }
+    }
+
+    function testAvatarSpeak() {
+      if (testAvatar) {
+        testAvatar.speak('你好，这是一个测试', true, true);
+        document.getElementById('avatar-result').innerHTML += '<br>正在说话...';
+      }
+    }
+
+    function testAvatarDisconnect() {
+      if (testAvatar) {
+        testAvatar.destroy();
+        testAvatar = null;
+        document.getElementById('avatar-result').innerHTML = '已断开连接';
+        document.getElementById('speak-btn').disabled = true;
+        document.getElementById('disconnect-btn').disabled = true;
+      }
+    }
+
+    // 显示完整诊断
+    function showFullDiagnostic() {
+      const diagnostic = {
+        sdk: {
+          loaded: typeof XmovAvatar !== 'undefined',
+          version: XmovAvatar?.version
+        },
+        config: {
+          loaded: typeof CONFIG !== 'undefined',
+          hasTestKeys: !!CONFIG?.TEST_KEYS
+        },
+        keys: CONFIG?.TEST_KEYS || {},
+        browser: {
+          userAgent: navigator.userAgent,
+          language: navigator.language,
+          platform: navigator.platform,
+          localStorage: typeof localStorage !== 'undefined',
+          fetch: typeof fetch !== 'undefined'
+        },
+        url: window.location.href
+      };
+
+      const pre = document.getElementById('full-diagnostic');
+      pre.textContent = JSON.stringify(diagnostic, null, 2);
+      pre.style.display = 'block';
+    }
+
+    // 页面加载后运行测试
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        testSDK();
+        testConfig();
+        testKeys();
+        testBrowser();
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

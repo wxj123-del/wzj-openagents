@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI学习规划助手 - 简化版</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* 覆盖样式，确保与测试页面一致 */
+    #avatar-container {
+      width: 600px !important;
+      height: 500px !important;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      margin: 20px auto;
+      display: block !important;
+      position: relative !important;
+      overflow: hidden !important;
+    }
+
+    /* 移除所有可能干扰的样式 */
+    #avatar-container > * {
+      position: relative !important;
+      z-index: auto !important;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <h1 class="app-title">📚 AI学习规划助手（简化版）</h1>
+      <button onclick="window.open('minimal-test.html', '_blank')" class="btn btn-secondary">打开测试页面</button>
+    </div>
+  </header>
+
+  <main class="main-container" style="max-width: 800px; margin: 0 auto;">
+    <!-- 数字人显示区域 -->
+    <section class="avatar-section">
+      <div id="avatar-container">
+        <!-- SDK会在这里渲染数字人 -->
+      </div>
+
+      <!-- 控制按钮和状态 -->
+      <div class="avatar-controls">
+        <div id="connection-status" class="connection-status">⚪ 未连接</div>
+        <div id="avatar-state" class="avatar-state">状态: 离线</div>
+        <div class="control-buttons">
+          <button id="connect-btn" class="btn btn-primary btn-large" onclick="handleConnect()">连接数字人</button>
+          <button id="disconnect-btn" class="btn btn-danger btn-large" onclick="handleDisconnect()" disabled>断开连接</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 交互区域 -->
+    <section class="interaction-section">
+      <div class="chat-history-container">
+        <div class="section-header">
+          <h2>💬 对话记录</h2>
+        </div>
+        <div id="chat-history" class="chat-history">
+          <div class="chat-message chat-message-system">
+            <div class="message-content">
+              欢迎使用AI学习规划助手！点击"连接数字人"开始使用。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 输入区域 -->
+      <div class="input-container">
+        <textarea
+          id="message-input"
+          class="message-input"
+          placeholder="输入你想说的话..."
+          rows="3"
+        ></textarea>
+        <button id="send-btn" class="btn btn-primary btn-send" onclick="handleSendMessage()" disabled>发送</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- 引入SDK -->
+  <script src="https://media.xingyun3d.com/xingyun3d/general/litesdk/xmovAvatar@latest.js"></script>
+  <script src="config.js"></script>
+
+  <script>
+    // 配置
+    let avatarSDK = null;
+    let isConnected = false;
+
+    // 日志函数
+    function log(message) {
+      console.log(message);
+    }
+
+    // 更新连接状态
+    function updateConnectionStatus(status) {
+      const statusElement = document.getElementById('connection-status');
+      const statusMap = {
+        'connecting': '🟡 连接中...',
+        'connected': '🟢 已连接',
+        'disconnected': '⚪ 未连接',
+        'failed': '🔴 连接失败'
+      };
+      statusElement.textContent = statusMap[status] || status;
+
+      // 更新按钮
+      document.getElementById('connect-btn').disabled = status === 'connected' || status === 'connecting';
+      document.getElementById('disconnect-btn').disabled = status !== 'connected';
+      document.getElementById('send-btn').disabled = status !== 'connected';
+    }
+
+    // 连接数字人
+    async function handleConnect() {
+      try {
+        log('=== 开始连接数字人 ===');
+        updateConnectionStatus('connecting');
+
+        // 获取密钥
+        const savedKeys = localStorage.getItem('learning_planner_keys');
+        const keys = savedKeys ? JSON.parse(savedKeys) : CONFIG.TEST_KEYS;
+
+        log('使用密钥:', keys.xingyun_appId);
+
+        // 检查容器
+        const container = document.getElementById('avatar-container');
+        log('容器检查:');
+        log('  - 宽度:', container.offsetWidth);
+        log('  - 高度:', container.offsetHeight);
+
+        // 创建SDK实例（完全按照测试页面）
+        avatarSDK = new XmovAvatar({
+          containerId: '#avatar-container',
+          appId: keys.xingyun_appId,
+          appSecret: keys.xingyun_appSecret,
+          gatewayServer: CONFIG.XINGYUN.GATEWAY_SERVER,
+
+          onMessage: (message) => {
+            log('SDK消息:', message);
+          },
+
+          onStateChange: (state) => {
+            log('状态变化:', state);
+            document.getElementById('avatar-state').textContent = '状态: ' + state;
+          },
+
+          onVoiceStateChange: (status) => {
+            log('语音状态:', status);
+          },
+
+          enableLogger: true
+        });
+
+        log('✓ SDK实例已创建');
+
+        // 初始化连接
+        await avatarSDK.init({
+          onDownloadProgress: (progress) => {
+            log(`资源加载: ${progress}%`);
+          }
+        });
+
+        log('✓ SDK已连接');
+        isConnected = true;
+        updateConnectionStatus('connected');
+
+        // 检查容器内容
+        setTimeout(() => {
+          log('=== 容器内容检查 ===');
+          log('子元素数量:', container.children.length);
+          log('第一个子元素:', container.firstElementChild?.tagName);
+          log('Canvas存在:', !!container.querySelector('canvas'));
+          log('Video存在:', !!container.querySelector('video'));
+
+          // 让数字人说话
+          avatarSDK.speak('你好，我是学习规划助手小智，很高兴见到你！', true, true);
+        }, 2000);
+
+      } catch (error) {
+        log('✗ 连接失败: ' + error.message);
+        console.error(error);
+        updateConnectionStatus('failed');
+      }
+    }
+
+    // 断开连接
+    function handleDisconnect() {
+      try {
+        log('=== 断开SDK ===');
+
+        if (avatarSDK) {
+          avatarSDK.destroy();
+          avatarSDK = null;
+        }
+
+        isConnected = false;
+        updateConnectionStatus('disconnected');
+        log('✓ SDK已断开');
+      } catch (error) {
+        log('✗ 断开失败: ' + error.message);
+      }
+    }
+
+    // 发送消息
+    function handleSendMessage() {
+      const input = document.getElementById('message-input');
+      const message = input.value.trim();
+
+      if (!message) return;
+
+      // 添加用户消息
+      addMessage(message, 'user');
+      input.value = '';
+
+      // 数字人说话
+      avatarSDK.speak(message, true, true);
+    }
+
+    // 添加消息到聊天历史
+    function addMessage(content, type) {
+      const chatHistory = document.getElementById('chat-history');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `chat-message chat-message-${type}`;
+      messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
+      chatHistory.appendChild(messageDiv);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // 页面加载时
+    window.addEventListener('load', () => {
+      log('=== 页面加载完成 ===');
+      log('SDK加载状态:', typeof XmovAvatar !== 'undefined' ? '✓ 已加载' : '✗ 未加载');
+    });
+  </script>
+</body>
+</html>
