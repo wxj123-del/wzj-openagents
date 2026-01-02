@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDK测试</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #1a1b4b 0%, #4c1d95 50%, #1a1b4b 100%);
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    #avatar-container {
+      width: 100%;
+      height: 500px;
+      background: rgba(147, 51, 234, 0.2);
+      border: 2px solid #9333ea;
+      border-radius: 12px;
+      position: relative;
+      display: block;
+    }
+    .controls {
+      margin-top: 20px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #9333ea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #7e22ce;
+    }
+    .log {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .log-item {
+      margin: 5px 0;
+      padding: 5px;
+      border-left: 3px solid #9333ea;
+      padding-left: 10px;
+    }
+    .log-item.error {
+      border-left-color: #ef4444;
+      color: #fca5a5;
+    }
+    .log-item.success {
+      border-left-color: #22c55e;
+      color: #86efac;
+    }
+    .log-item.info {
+      border-left-color: #3b82f6;
+      color: #93c5fd;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>星云SDK独立测试</h1>
+
+    <!-- 容器 -->
+    <div id="avatar-container">
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+        <div style="font-size: 48px;">🔮</div>
+        <div>数字人容器</div>
+      </div>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="controls">
+      <h2>控制面板</h2>
+      <button onclick="testContainer()">检查容器</button>
+      <button onclick="createSDK()">创建SDK实例</button>
+      <button onclick="initSDK()">初始化SDK</button>
+      <button onclick="testSpeak()">测试说话</button>
+      <button onclick="destroySDK()">销毁SDK</button>
+
+      <div style="margin-top: 15px;">
+        <label>
+          <input type="checkbox" id="autoInit"> 自动初始化
+        </label>
+      </div>
+    </div>
+
+    <!-- 日志 -->
+    <div class="log" id="log"></div>
+  </div>
+
+  <!-- SDK脚本 -->
+  <script src="https://media.xingyun3d.com/xingyun3d/general/litesdk/xmovAvatar@latest.js"></script>
+
+  <script>
+    let sdkInstance = null;
+
+    const APP_ID = '65254e14e816423da6218e47b2003ea8';
+    const APP_SECRET = 'ba0cb4a582e045d382fd65468937886f';
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const item = document.createElement('div');
+      item.className = `log-item ${type}`;
+      item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logDiv.appendChild(item);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(message);
+    }
+
+    function testContainer() {
+      log('=== 检查容器 ===', 'info');
+      const container = document.getElementById('avatar-container');
+
+      if (!container) {
+        log('❌ 容器不存在!', 'error');
+        return;
+      }
+
+      log(`✓ 容器存在`, 'success');
+      log(`  - offsetWidth: ${container.offsetWidth}`, 'info');
+      log(`  - offsetHeight: ${container.offsetHeight}`, 'info');
+      log(`  - clientWidth: ${container.clientWidth}`, 'info');
+      log(`  - clientHeight: ${container.clientHeight}`, 'info');
+      log(`  - getBoundingClientRect: ${JSON.stringify(container.getBoundingClientRect())}`, 'info');
+      log(`  - display: ${getComputedStyle(container).display}`, 'info');
+      log(`  - position: ${getComputedStyle(container).position}`, 'info');
+
+      return true;
+    }
+
+    function createSDK() {
+      log('=== 创建SDK实例 ===', 'info');
+
+      if (!testContainer()) {
+        log('容器检查失败，无法创建SDK', 'error');
+        return;
+      }
+
+      if (typeof XmovAvatar === 'undefined') {
+        log('❌ XmovAvatar未加载', 'error');
+        return;
+      }
+
+      log('✓ XmovAvatar已加载', 'success');
+
+      try {
+        log('开始创建实例...', 'info');
+        log(`App ID: ${APP_ID}`, 'info');
+
+        sdkInstance = new XmovAvatar({
+          containerId: '#avatar-container',  // 添加#号前缀
+          appId: APP_ID,
+          appSecret: APP_SECRET,
+          gatewayServer: 'https://nebula-agent.xingyun3d.com/user/v1/ttsa/session',
+          enableLogger: true,
+
+          onMessage(message) {
+            log(`SDK消息: ${JSON.stringify(message)}`, 'info');
+            if (message.code === 10001) {
+              log(`⚠️ SDK报告容器不存在!`, 'error');
+            }
+          },
+
+          onStateChange(state) {
+            log(`状态变化: ${state}`, 'info');
+          },
+
+          onVoiceStateChange(status) {
+            log(`语音状态: ${status}`, 'info');
+          },
+
+          onNetworkInfo(info) {
+            log(`网络信息: RTT=${info.rtt}ms, 下载=${info.downlink}MB/s`, 'info');
+          },
+
+          onStatusChange(status) {
+            log(`SDK状态: ${JSON.stringify(status)}`, 'info');
+          }
+        });
+
+        log(`✓ 实例创建成功: ${typeof sdkInstance}`, 'success');
+        log(`  - 有init方法: ${typeof sdkInstance.init === 'function'}`, 'info');
+
+        if (document.getElementById('autoInit').checked) {
+          setTimeout(() => {
+            log('自动调用init...', 'info');
+            initSDK();
+          }, 1000);
+        }
+
+      } catch (error) {
+        log(`❌ 创建失败: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    function initSDK() {
+      log('=== 初始化SDK ===', 'info');
+
+      if (!sdkInstance) {
+        log('❌ SDK实例不存在', 'error');
+        return;
+      }
+
+      if (typeof sdkInstance.init !== 'function') {
+        log('❌ SDK实例没有init方法', 'error');
+        return;
+      }
+
+      log('调用init方法...', 'info');
+
+      sdkInstance.init({
+        onDownloadProgress(progress) {
+          if (progress % 10 === 0 || progress === 100) {
+            log(`下载进度: ${progress}%`, 'info');
+          }
+        }
+      }).then(() => {
+        log('✓ 初始化成功!', 'success');
+      }).catch(error => {
+        log(`❌ 初始化失败: ${error.message || error}`, 'error');
+        console.error('初始化错误:', error);
+      });
+    }
+
+    function testSpeak() {
+      log('=== 测试说话 ===', 'info');
+
+      if (!sdkInstance) {
+        log('❌ SDK实例不存在', 'error');
+        return;
+      }
+
+      try {
+        sdkInstance.speak('你好，我是AI占卜师，很高兴为你服务！', true, true);
+        log('✓ 已调用speak方法', 'success');
+      } catch (error) {
+        log(`❌ 说话失败: ${error.message}`, 'error');
+      }
+    }
+
+    function destroySDK() {
+      log('=== 销毁SDK ===', 'info');
+
+      if (!sdkInstance) {
+        log('SDK实例不存在', 'info');
+        return;
+      }
+
+      try {
+        sdkInstance.destroy();
+        sdkInstance = null;
+        log('✓ SDK已销毁', 'success');
+      } catch (error) {
+        log(`❌ 销毁失败: ${error.message}`, 'error');
+      }
+    }
+
+    // 页面加载完成后自动检查
+    window.onload = function() {
+      log('=== 页面加载完成 ===', 'success');
+      testContainer();
+
+      // 检查SDK是否加载
+      setTimeout(() => {
+        if (typeof XmovAvatar !== 'undefined') {
+          log('✓ XmovAvatar SDK已加载', 'success');
+        } else {
+          log('⚠️ XmovAvatar SDK尚未加载', 'error');
+        }
+      }, 1000);
+    };
+  </script>
+</body>
+</html>

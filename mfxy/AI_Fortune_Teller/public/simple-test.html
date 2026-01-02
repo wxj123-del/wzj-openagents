@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字人测试</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1b4b 0%, #6B46C1 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #avatar-wrapper {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    #avatar-container {
+      width: 100%;
+      height: 500px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 2px dashed rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      position: relative;
+      overflow: visible; /* 重要：确保不被裁剪 */
+      display: block; /* 确保是块级元素 */
+    }
+    #avatar-container canvas,
+    #avatar-container video,
+    #avatar-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    #avatar-container::before {
+      content: '数字人将显示在这里';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 18px;
+      pointer-events: none;
+    }
+    .controls {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 12px 24px;
+      background: #6B46C1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    button:hover { background: #5568d3; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #log {
+      background: rgba(0, 0, 0, 0.5);
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+    .log-entry {
+      margin: 4px 0;
+      padding: 4px 8px;
+      border-left: 3px solid #555;
+    }
+    .log-success { border-left-color: #22c55e; }
+    .log-error { border-left-color: #ef4444; }
+    .log-info { border-left-color: #3b82f6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔮 数字人SDK测试</h1>
+
+    <div id="avatar-wrapper">
+      <div id="avatar-container"></div>
+    </div>
+
+    <div class="controls">
+      <button onclick="connect()">连接数字人</button>
+      <button onclick="inspectContainer()">检查容器</button>
+      <button onclick="testSpeak()" id="speakBtn" disabled>测试说话</button>
+      <button onclick="disconnect()" id="disconnectBtn" disabled>断开连接</button>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script src="https://media.xingyun3d.com/xingyun3d/general/litesdk/xmovAvatar@latest.js"></script>
+
+  <script>
+    const APP_ID = '65254e14e816423da6218e47b2003ea8';
+    const APP_SECRET = 'ba0cb4a582e045d382fd65468937886f';
+    let sdkInstance = null;
+
+    function log(msg, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(msg);
+    }
+
+    async function connect() {
+      log('=== 开始连接数字人 ===', 'info');
+
+      if (typeof XmovAvatar === 'undefined') {
+        log('❌ SDK未加载', 'error');
+        return;
+      }
+
+      log('✓ SDK已加载', 'success');
+
+      try {
+        log('创建SDK实例...', 'info');
+        log(`容器ID: #avatar-container`, 'info');
+        log(`App ID: ${APP_ID}`, 'info');
+
+        sdkInstance = new XmovAvatar({
+          containerId: '#avatar-container',
+          appId: APP_ID,
+          appSecret: APP_SECRET,
+          gatewayServer: 'https://nebula-agent.xingyun3d.com/user/v1/ttsa/session',
+          enableLogger: true,
+
+          onMessage(msg) {
+            log(`SDK: ${JSON.stringify(msg)}`, msg.code === 10001 ? 'error' : 'info');
+          },
+
+          onStateChange(state) {
+            log(`状态: ${state}`, 'info');
+          },
+
+          onVoiceStateChange(status) {
+            log(`语音: ${status}`, 'info');
+          },
+
+          onStatusChange(status) {
+            log(`SDK状态: ${JSON.stringify(status)}`, 'info');
+          }
+        });
+
+        log('✓ 实例创建成功', 'success');
+
+        // 等待一下再初始化
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        log('开始初始化...', 'info');
+
+        await sdkInstance.init({
+          onDownloadProgress(progress) {
+            if (progress % 10 === 0 || progress === 100) {
+              log(`下载进度: ${progress}%`, 'info');
+            }
+          }
+        });
+
+        // 检查初始化是否真的成功
+        setTimeout(() => {
+          const container = document.getElementById('avatar-container');
+          const canvases = container.querySelectorAll('canvas');
+          let hasLargeCanvas = false;
+
+          canvases.forEach(canvas => {
+            if (canvas.width > 500 && canvas.height > 400) {
+              hasLargeCanvas = true;
+            }
+          });
+
+          if (hasLargeCanvas) {
+            log('✓ 初始化成功！数字人已渲染', 'success');
+          } else {
+            log('⚠️ 初始化未完成，可能遇到限流或资源加载失败', 'error');
+            log('建议：等待5-10分钟后重试，或使用新的App ID', 'warning');
+          }
+        }, 2000);
+        log('数字人应该已经显示了', 'success');
+
+        // 切换到待机状态
+        setTimeout(() => {
+          sdkInstance.idle();
+          log('切换到待机状态', 'info');
+        }, 1000);
+
+        document.getElementById('speakBtn').disabled = false;
+        document.getElementById('disconnectBtn').disabled = false;
+
+      } catch (error) {
+        log(`❌ 失败: ${error.message}`, 'error');
+        console.error('详细错误:', error);
+      }
+    }
+
+    function testSpeak() {
+      if (!sdkInstance) return;
+
+      log('测试说话...', 'info');
+      try {
+        sdkInstance.speak('你好，我是AI占卜师，很高兴为你服务！', true, true);
+        log('✓ 已发送语音指令', 'success');
+      } catch (error) {
+        log(`❌ 说话失败: ${error.message}`, 'error');
+      }
+    }
+
+    function disconnect() {
+      if (!sdkInstance) return;
+
+      log('断开连接...', 'info');
+      try {
+        sdkInstance.destroy();
+        sdkInstance = null;
+        log('✓ 已断开连接', 'success');
+
+        document.getElementById('speakBtn').disabled = true;
+        document.getElementById('disconnectBtn').disabled = true;
+
+        // 检查容器内还剩什么
+        setTimeout(() => {
+          const container = document.getElementById('avatar-container');
+          log('检查容器内容:', 'info');
+          log(`  子元素数: ${container.children.length}`, 'info');
+          container.childNodes.forEach((node, i) => {
+            log(`  子节点${i}: ${node.nodeName}`, 'info');
+          });
+        }, 500);
+
+      } catch (error) {
+        log(`❌ 断开失败: ${error.message}`, 'error');
+      }
+    }
+
+    // 检查SDK创建的DOM元素
+    function inspectContainer() {
+      const container = document.getElementById('avatar-container');
+      log('=== 容器检查 ===', 'info');
+      log(`容器大小: ${container.offsetWidth}x${container.offsetHeight}`, 'info');
+      log(`子元素数: ${container.children.length}`, 'info');
+      log(`所有子节点数: ${container.childNodes.length}`, 'info');
+
+      container.childNodes.forEach((node, i) => {
+        const info = `${node.nodeName}`;
+        if (node.nodeName === 'CANVAS') {
+          log(`  子节点${i}: CANVAS (尺寸: ${node.width}x${node.height})`, 'info');
+        } else if (node.nodeName === 'VIDEO') {
+          log(`  子节点${i}: VIDEO`, 'info');
+        } else if (node.nodeName === 'IFRAME') {
+          log(`  子节点${i}: IFRAME`, 'info');
+        } else if (node.nodeType === 3) {
+          log(`  子节点${i}: 文本节点`, 'info');
+        } else {
+          log(`  子节点${i}: ${info}`, 'info');
+        }
+      });
+    }
+
+    // 定期检查容器
+    setInterval(() => {
+      if (sdkInstance) {
+        const container = document.getElementById('avatar-container');
+        if (container.children.length > 0) {
+          log(`✓ 容器内有 ${container.children.length} 个元素`, 'success');
+          inspectContainer();
+        }
+      }
+    }, 5000);
+
+    // 页面加载后显示信息
+    window.onload = function() {
+      log('=== 页面加载完成 ===', 'info');
+      log('等待SDK加载...', 'info');
+
+      setTimeout(() => {
+        if (typeof XmovAvatar !== 'undefined') {
+          log('✓ SDK已加载，可以开始连接', 'success');
+        } else {
+          log('⚠️ SDK尚未加载', 'error');
+        }
+      }, 1000);
+
+      // 检查容器
+      const container = document.getElementById('avatar-container');
+      if (container) {
+        log(`容器尺寸: ${container.offsetWidth}x${container.offsetHeight}`, 'info');
+        log(`容器位置: 在视口内`, 'info');
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>完整SDK诊断</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 { color: #333; margin-bottom: 20px; }
+    h2 { color: #555; margin: 20px 0 10px; font-size: 18px; }
+    .section {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      border-left: 4px solid #667eea;
+    }
+    #avatar-container {
+      width: 600px;
+      height: 400px;
+      background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+      border: 3px solid #667eea;
+      border-radius: 12px;
+      margin: 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #333;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    button {
+      padding: 12px 24px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    button:hover { background: #5568d3; transform: translateY(-2px); }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    #log {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 500px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px 10px;
+      border-radius: 4px;
+      border-left: 3px solid #555;
+    }
+    .log-info { border-left-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+    .log-success { border-left-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+    .log-error { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+    .log-warning { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .status-ok { background: #22c55e; color: white; }
+    .status-error { background: #ef4444; color: white; }
+    .status-wait { background: #f59e0b; color: white; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 星云SDK完整诊断工具</h1>
+
+    <div class="section">
+      <h2>环境检查 <span id="env-status" class="status status-wait">检查中...</span></h2>
+      <div id="env-info"></div>
+    </div>
+
+    <div class="section">
+      <h2>SDK加载状态 <span id="sdk-status" class="status status-wait">等待加载...</span></h2>
+      <div id="sdk-info"></div>
+    </div>
+
+    <div class="section">
+      <h2>数字人容器 <span id="container-status" class="status status-wait">检查中...</span></h2>
+      <div id="avatar-container">
+        <div>🔮 数字人将在这里显示</div>
+      </div>
+      <div id="container-info"></div>
+    </div>
+
+    <div class="section">
+      <h2>操作控制</h2>
+      <div class="controls">
+        <button onclick="runFullDiagnostic()">🔬 运行完整诊断</button>
+        <button onclick="testCreateInstance()">🧪 创建测试实例</button>
+        <button onclick="exportDiagnostic()">📋 导出诊断报告</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>诊断日志</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script src="https://media.xingyun3d.com/xingyun3d/general/litesdk/xmovAvatar@latest.js"></script>
+
+  <script>
+    const APP_ID = '65254e14e816423da6218e47b2003ea8';
+    const APP_SECRET = 'ba0cb4a582e045d382fd65468937886f';
+    let sdkInstance = null;
+    let diagnosticData = {
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      language: navigator.language,
+      cookieEnabled: navigator.cookieEnabled,
+      onLine: navigator.onLine,
+      screen: {
+        width: screen.width,
+        height: screen.height,
+        availWidth: screen.availWidth,
+        availHeight: screen.availHeight,
+        colorDepth: screen.colorDepth,
+        pixelRatio: window.devicePixelRatio
+      },
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      },
+      sdkLoaded: false,
+      sdkVersion: null,
+      containerInfo: null,
+      creationSuccess: false,
+      initSuccess: false,
+      errors: [],
+      warnings: []
+    };
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${time}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+
+      if (type === 'error') diagnosticData.errors.push(message);
+      if (type === 'warning') diagnosticData.warnings.push(message);
+    }
+
+    function checkEnvironment() {
+      log('=== 环境检查 ===', 'info');
+
+      const envInfo = document.getElementById('env-info');
+      const envStatus = document.getElementById('env-status');
+
+      let html = '<table style="width:100%; border-collapse:collapse;">';
+      html += '<tr style="border-bottom:1px solid #ddd;"><td style="padding:8px;"><strong>项目</strong></td><td style="padding:8px;"><strong>值</strong></td></tr>';
+
+      const checks = [
+        { name: '浏览器', value: navigator.userAgent },
+        { name: '平台', value: navigator.platform },
+        { name: '在线状态', value: navigator.onLine ? '✓ 在线' : '✗ 离线' },
+        { name: 'Cookie', value: navigator.cookieEnabled ? '✓ 启用' : '✗ 禁用' },
+        { name: '语言', value: navigator.language },
+        { name: '屏幕分辨率', value: `${screen.width}x${screen.height}` },
+        { name: '可用屏幕', value: `${screen.availWidth}x${screen.availHeight}` },
+        { name: '像素比', value: window.devicePixelRatio },
+        { name: 'WebGL', value: checkWebGL() ? '✓ 支持' : '✗ 不支持' },
+        { name: 'WebWorker', value: typeof Worker !== 'undefined' ? '✓ 支持' : '✗ 不支持' },
+        { name: 'LocalStorage', value: checkLocalStorage() ? '✓ 支持' : '✗ 不支持' },
+      ];
+
+      checks.forEach(check => {
+        html += `<tr style="border-bottom:1px solid #eee;"><td style="padding:6px;">${check.name}</td><td style="padding:6px;">${check.value}</td></tr>`;
+      });
+
+      html += '</table>';
+      envInfo.innerHTML = html;
+      envStatus.className = 'status status-ok';
+      envStatus.textContent = '✓ 完成';
+
+      checks.forEach(check => log(`${check.name}: ${check.value}`, 'info'));
+    }
+
+    function checkWebGL() {
+      try {
+        const canvas = document.createElement('canvas');
+        return !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function checkLocalStorage() {
+      try {
+        localStorage.setItem('test', 'test');
+        localStorage.removeItem('test');
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function checkSDK() {
+      log('=== SDK检查 ===', 'info');
+
+      const sdkInfo = document.getElementById('sdk-info');
+      const sdkStatus = document.getElementById('sdk-status');
+
+      if (typeof XmovAvatar === 'undefined') {
+        log('❌ XmovAvatar未加载', 'error');
+        sdkStatus.className = 'status status-error';
+        sdkStatus.textContent = '✗ 未加载';
+        sdkInfo.innerHTML = '<p style="color:red;">SDK脚本未加载，请检查网络连接</p>';
+        return false;
+      }
+
+      diagnosticData.sdkLoaded = true;
+      log('✓ XmovAvatar已加载', 'success');
+
+      // 尝试获取SDK版本
+      try {
+        const sdkStr = XmovAvatar.toString();
+        const versionMatch = sdkStr.match(/version:\s*([^\n,]+)/);
+        if (versionMatch) {
+          diagnosticData.sdkVersion = versionMatch[1];
+          log(`SDK版本: ${diagnosticData.sdkVersion}`, 'info');
+        }
+      } catch (e) {
+        log('无法获取SDK版本', 'warning');
+      }
+
+      // 检查SDK原型方法
+      const methods = [];
+      for (let prop in XmovAvatar.prototype) {
+        if (typeof XmovAvatar.prototype[prop] === 'function') {
+          methods.push(prop);
+        }
+      }
+
+      log(`SDK实例方法 (${methods.length}个):`, 'info');
+      methods.slice(0, 10).forEach(m => log(`  - ${m}`, 'info'));
+      if (methods.length > 10) {
+        log(`  ... 还有 ${methods.length - 10} 个方法`, 'info');
+      }
+
+      sdkStatus.className = 'status status-ok';
+      sdkStatus.textContent = '✓ 已加载';
+
+      let html = '<p style="color:green;"><strong>✓ SDK已加载</strong></p>';
+      html += `<p>类型: ${typeof XmovAvatar}</p>`;
+      html += `<p>原型方法数: ${methods.length}</p>`;
+      if (diagnosticData.sdkVersion) {
+        html += `<p>版本: ${diagnosticData.sdkVersion}</p>`;
+      }
+      sdkInfo.innerHTML = html;
+
+      return true;
+    }
+
+    function checkContainer() {
+      log('=== 容器检查 ===', 'info');
+
+      const containerInfo = document.getElementById('container-info');
+      const containerStatus = document.getElementById('container-status');
+
+      const container = document.getElementById('avatar-container');
+
+      if (!container) {
+        log('❌ 容器不存在', 'error');
+        containerStatus.className = 'status status-error';
+        containerStatus.textContent = '✗ 不存在';
+        return false;
+      }
+
+      diagnosticData.containerInfo = {
+        id: container.id,
+        tagName: container.tagName,
+        offsetWidth: container.offsetWidth,
+        offsetHeight: container.offsetHeight,
+        clientWidth: container.clientWidth,
+        clientHeight: container.clientHeight,
+        scrollWidth: container.scrollWidth,
+        scrollHeight: container.scrollHeight,
+        display: getComputedStyle(container).display,
+        position: getComputedStyle(container).position,
+        visibility: getComputedStyle(container).visibility,
+        opacity: getComputedStyle(container).opacity,
+        zIndex: getComputedStyle(container).zIndex
+      };
+
+      log('✓ 容器存在', 'success');
+      log(`  尺寸: ${diagnosticData.containerInfo.offsetWidth}x${diagnosticData.containerInfo.offsetHeight}`, 'info');
+      log(`  显示: ${diagnosticData.containerInfo.display}`, 'info');
+      log(`  位置: ${diagnosticData.containerInfo.position}`, 'info');
+      log(`  可见性: ${diagnosticData.containerInfo.visibility}`, 'info');
+      log(`  不透明度: ${diagnosticData.containerInfo.opacity}`, 'info');
+
+      // 检查父元素
+      if (container.parentElement) {
+        log(`  父元素: ${container.parentElement.tagName}${container.parentElement.id ? '#' + container.parentElement.id : ''}`, 'info');
+      }
+
+      // 检查是否在DOM中
+      const inDocument = document.body.contains(container);
+      log(`  在document中: ${inDocument ? '是' : '否'}`, inDocument ? 'info' : 'error');
+
+      containerStatus.className = 'status status-ok';
+      containerStatus.textContent = '✓ 正常';
+
+      let html = '<table style="width:100%; border-collapse:collapse;">';
+      html += '<tr style="border-bottom:1px solid #ddd;"><td style="padding:6px;"><strong>属性</strong></td><td style="padding:6px;"><strong>值</strong></td></tr>';
+
+      for (let key in diagnosticData.containerInfo) {
+        html += `<tr style="border-bottom:1px solid #eee;"><td style="padding:6px;">${key}</td><td style="padding:6px;">${diagnosticData.containerInfo[key]}</td></tr>`;
+      }
+
+      html += '</table>';
+      containerInfo.innerHTML = html;
+
+      return true;
+    }
+
+    function testCreateInstance() {
+      log('=== 测试创建SDK实例 ===', 'info');
+
+      if (!diagnosticData.sdkLoaded) {
+        log('❌ SDK未加载，无法创建实例', 'error');
+        return;
+      }
+
+      if (!diagnosticData.containerInfo) {
+        checkContainer();
+      }
+
+      try {
+        log('创建SDK实例...', 'info');
+        log(`  App ID: ${APP_ID}`, 'info');
+
+        sdkInstance = new XmovAvatar({
+          containerId: '#avatar-container',  // 添加#号前缀
+          appId: APP_ID,
+          appSecret: APP_SECRET,
+          gatewayServer: 'https://nebula-agent.xingyun3d.com/user/v1/ttsa/session',
+          enableLogger: true,
+
+          onMessage(msg) {
+            const msgStr = JSON.stringify(msg);
+            log(`SDK消息: ${msgStr}`, msg.code === 10001 ? 'error' : 'info');
+
+            if (msg.code === 10001) {
+              log('⚠️ SDK报告容器不存在，但容器检查显示容器存在', 'warning');
+              log('这可能是SDK内部问题，需要联系技术支持', 'warning');
+            }
+          },
+
+          onStateChange(state) {
+            log(`状态变化: ${state}`, 'info');
+          },
+
+          onVoiceStateChange(status) {
+            log(`语音状态: ${status}`, 'info');
+          },
+
+          onNetworkInfo(info) {
+            log(`网络: RTT=${info.rtt}ms, DL=${info.downlink}MB/s`, 'info');
+          },
+
+          onStatusChange(status) {
+            log(`SDK状态: ${JSON.stringify(status)}`, 'info');
+          }
+        });
+
+        diagnosticData.creationSuccess = true;
+        log('✓ SDK实例创建成功', 'success');
+
+        // 尝试初始化
+        setTimeout(async () => {
+          try {
+            log('调用init方法...', 'info');
+
+            await sdkInstance.init({
+              onDownloadProgress(progress) {
+                if (progress % 20 === 0 || progress === 100) {
+                  log(`下载进度: ${progress}%`, 'info');
+                }
+              }
+            });
+
+            diagnosticData.initSuccess = true;
+            log('✓ SDK初始化成功！', 'success');
+
+          } catch (error) {
+            log(`❌ 初始化失败: ${error.message}`, 'error');
+            log(`错误堆栈: ${error.stack}`, 'error');
+
+            // 详细错误信息
+            log('错误详情:', 'error');
+            for (let key in error) {
+              log(`  ${key}: ${error[key]}`, 'error');
+            }
+          }
+        }, 1000);
+
+      } catch (error) {
+        log(`❌ 创建实例失败: ${error.message}`, 'error');
+        log(`错误堆栈: ${error.stack}`, 'error');
+      }
+    }
+
+    function runFullDiagnostic() {
+      document.getElementById('log').innerHTML = '';
+      log('========================================', 'info');
+      log('开始完整诊断', 'info');
+      log('========================================', 'info');
+
+      setTimeout(() => {
+        checkEnvironment();
+        checkSDK();
+        checkContainer();
+
+        log('========================================', 'info');
+        log('基础检查完成，请手动点击"创建测试实例"', 'info');
+        log('========================================', 'info');
+      }, 500);
+    }
+
+    function exportDiagnostic() {
+      const dataStr = JSON.stringify(diagnosticData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sdk-diagnostic-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      log('✓ 诊断报告已导出', 'success');
+    }
+
+    // 页面加载后自动运行基础检查
+    window.onload = function() {
+      setTimeout(() => {
+        runFullDiagnostic();
+      }, 1000);
+    };
+  </script>
+</body>
+</html>
