@@ -399,6 +399,91 @@
             line-height: 1.6;
         }
 
+        .message .meta-info {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            font-size: 12px;
+        }
+
+        .message.ai .meta-info {
+            border-top-color: rgba(0, 0, 0, 0.08);
+        }
+
+        .confidence-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .confidence-label {
+            font-weight: 600;
+            color: #6b7280;
+        }
+
+        .confidence-track {
+            flex: 1;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .confidence-fill.high {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        }
+
+        .confidence-fill.medium {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .confidence-fill.low {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .confidence-value {
+            font-weight: 700;
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .knowledge-ref {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            padding: 8px 12px;
+            background: rgba(102, 126, 234, 0.08);
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .knowledge-ref .icon {
+            font-size: 14px;
+        }
+
+        .knowledge-ref .content {
+            flex: 1;
+        }
+
+        .knowledge-ref .title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 2px;
+        }
+
+        .knowledge-ref .source {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
         .input-section {
             display: flex;
             gap: 12px;
@@ -747,6 +832,115 @@
         let conversationHistory = [];
         let debugMode = false;
 
+        // 健康知识库
+        const HEALTH_KNOWLEDGE_BASE = [
+            {
+                id: 1,
+                keywords: ['水', '饮水', '喝水', '水分'],
+                title: '科学饮水指南',
+                content: '成年人每天应饮水1500-1700毫升（约7-8杯）。建议：1）早起空腹喝一杯温水；2）少量多次，不要一次大量饮水；3）运动后要及时补充水分；4）尿液颜色是判断饮水是否充足的简单方法，淡黄色为佳。',
+                source: '中国居民膳食指南'
+            },
+            {
+                id: 2,
+                keywords: ['睡眠', '失眠', '休息', '熬夜'],
+                title: '健康睡眠建议',
+                content: '成年人每天需要7-9小时的睡眠。改善睡眠：1）保持规律的作息时间；2）睡前避免使用电子设备；3）创造舒适的睡眠环境（黑暗、安静、凉爽）；4）避免睡前饮用咖啡或浓茶；5）适量运动有助于提高睡眠质量。',
+                source: '中国睡眠研究会'
+            },
+            {
+                id: 3,
+                keywords: ['饮食', '营养', '吃饭', '食物', '蔬菜', '水果'],
+                title: '健康饮食原则',
+                content: '均衡饮食应遵循：1）食物多样，谷类为主；2）多吃蔬菜水果和薯类；3）每天吃奶类、大豆或其制品；4）常吃适量的鱼、禽、蛋和瘦肉；5）减少烹调油用量，吃清淡少盐膳食；6）食不过量，天天运动；7）三餐分配要合理。',
+                source: '中国居民膳食指南'
+            },
+            {
+                id: 4,
+                keywords: ['运动', '锻炼', '健身', '跑步', '活动'],
+                title: '科学运动指南',
+                content: '成年人每周应至少进行150分钟中等强度有氧运动或75分钟高强度有氧运动。建议：1）运动前充分热身；2）选择适合自己的运动项目；3）循序渐进，避免运动损伤；4）运动后适当拉伸；5）注意补充水分和营养。',
+                source: 'WHO运动指南'
+            },
+            {
+                id: 5,
+                keywords: ['感冒', '流感', '发烧', '发热'],
+                title: '感冒防治知识',
+                content: '普通感冒多为病毒感染，具有自限性。应对措施：1）多休息，保证充足睡眠；2）多喝温水；3）注意室内通风；4）症状严重时可使用对症药物缓解；5）如出现高烧不退、呼吸困难等症状，应及时就医。',
+                source: '中华医学会'
+            },
+            {
+                id: 6,
+                keywords: ['血压', '高血压', '低压', '高压'],
+                title: '高血压防治',
+                content: '正常血压：收缩压<120mmHg，舒张压<80mmHg。高血压预防：1）减少钠盐摄入；2）控制体重；3）适量运动；4）戒烟限酒；5）保持心理平衡；6）定期监测血压。已确诊患者应遵医嘱服药。',
+                source: '中国高血压防治指南'
+            },
+            {
+                id: 7,
+                keywords: ['血糖', '糖尿病', '胰岛素'],
+                title: '糖尿病管理',
+                content: '正常空腹血糖：3.9-6.1mmol/L。预防建议：1）合理膳食，控制总热量；2）增加体力活动；3）控制体重；4）戒烟限酒；5）定期检测血糖；6）保持良好心态。糖尿病患者需在医生指导下进行治疗。',
+                source: '中国2型糖尿病防治指南'
+            },
+            {
+                id: 8,
+                keywords: ['压力', '焦虑', '抑郁', '情绪', '心情'],
+                title: '心理健康管理',
+                content: '维护心理健康的方法：1）保持规律作息；2）适度运动释放压力；3）与亲友保持良好沟通；4）培养兴趣爱好；5）学会放松技巧（深呼吸、冥想）；6）必要时寻求专业心理咨询帮助。',
+                source: '国家心理健康指南'
+            },
+            {
+                id: 9,
+                keywords: ['视力', '眼睛', '近视', '护眼'],
+                title: '护眼知识',
+                content: '保护视力建议：1）遵循20-20-20法则（每20分钟看20英尺外的物体20秒）；2）保持正确的阅读距离；3）保证充足户外活动时间；4）保证室内照明充足；5）定期进行眼部检查；6）减少长时间使用电子设备。',
+                source: '眼健康指南'
+            },
+            {
+                id: 10,
+                keywords: ['体重', '肥胖', '减肥', 'BMI', '瘦身'],
+                title: '体重管理',
+                content: '正常BMI范围：18.5-23.9。健康减重：1）合理控制饮食热量；2）增加运动消耗；3）每周减重0.5-1kg为宜；4）不要节食或使用减肥药；5）建立长期的生活方式改变；6）咨询营养师或医生制定个性化方案。',
+                source: '中国成人超重和肥胖症预防控制指南'
+            },
+            {
+                id: 11,
+                keywords: ['心脏', '心血管', '心悸', '胸闷'],
+                title: '心脏健康',
+                content: '保护心脏健康：1）低盐低脂饮食；2）规律运动；3）戒烟限酒；4）控制体重；5）管理压力；6）定期体检；7）控制三高（高血压、高血糖、高血脂）。出现胸痛、胸闷、心悸等症状应及时就医。',
+                source: '中国心血管病预防指南'
+            },
+            {
+                id: 12,
+                keywords: ['骨骼', '钙', '骨质疏松', '关节'],
+                title: '骨骼健康',
+                content: '维护骨骼健康：1）保证充足的钙摄入（成人每天800-1000mg）；2）补充维生素D；3）适量负重运动；4）避免吸烟和过量饮酒；5）预防跌倒；6）定期检查骨密度。中老年人尤其需要关注骨质疏松预防。',
+                source: '中国骨质疏松症诊疗指南'
+            },
+            {
+                id: 13,
+                keywords: ['胃', '消化', '便秘', '腹泻'],
+                title: '消化系统健康',
+                content: '维护消化健康：1）规律饮食，细嚼慢咽；2）避免暴饮暴食；3）少吃辛辣刺激食物；4）增加膳食纤维摄入；5）适量运动促进肠道蠕动；6）保持良好心态。严重或持续症状应及时就医检查。',
+                source: '中国消化病诊疗指南'
+            },
+            {
+                id: 14,
+                keywords: ['牙齿', '口腔', '刷牙', '牙龈'],
+                title: '口腔健康',
+                content: '口腔护理建议：1）每天刷牙2次，每次2-3分钟；2）使用含氟牙膏；3）每天使用牙线清洁牙缝；4）定期口腔检查（每半年一次）；5）减少甜食摄入；6）戒烟限酒。健康的口腔有助于全身健康。',
+                source: '中国口腔健康指南'
+            },
+            {
+                id: 15,
+                keywords: ['预防', '疫苗', '免疫', '体检'],
+                title: '疾病预防与体检',
+                content: '疾病预防措施：1）按时接种疫苗；2）定期健康体检；3）保持良好的卫生习惯；4）均衡饮食和规律运动；5）充足的睡眠；6）管理压力；7）避免吸烟和过量饮酒。建议每年进行一次全面体检。',
+                source: '中国健康管理指南'
+            }
+        ];
+
         // 内置测试密钥
         const TEST_KEYS = {
             xingyun_appId: '65254e14e816423da6218e47b2003ea8',
@@ -768,6 +962,117 @@
             debugMode = !debugMode;
             document.getElementById('debug-info').classList.toggle('active', debugMode);
             debugLog('调试模式: ' + (debugMode ? '开启' : '关闭'));
+        }
+
+        // ========== 知识库检索功能 ==========
+        function searchKnowledgeBase(query) {
+            const results = [];
+            const queryLower = query.toLowerCase();
+
+            for (const item of HEALTH_KNOWLEDGE_BASE) {
+                let score = 0;
+
+                // 计算关键词匹配得分
+                for (const keyword of item.keywords) {
+                    if (queryLower.includes(keyword.toLowerCase())) {
+                        score += 10;
+                    }
+                }
+
+                // 计算标题匹配
+                if (item.title.toLowerCase().includes(queryLower)) {
+                    score += 5;
+                }
+
+                // 保存结果
+                if (score > 0) {
+                    results.push({
+                        ...item,
+                        score: score
+                    });
+                }
+            }
+
+            // 按得分排序
+            results.sort((a, b) => b.score - a.score);
+
+            debugLog('知识库检索: 找到 ' + results.length + ' 条相关内容');
+            return results.slice(0, 3); // 返回前3条最相关的
+        }
+
+        // ========== 置信度评估功能 ==========
+        function calculateConfidence(userQuery, aiResponse, knowledgeMatches) {
+            let confidence = 50; // 基础分50分
+
+            // 1. 基于知识库匹配加分（最高30分）
+            if (knowledgeMatches.length > 0) {
+                confidence += Math.min(knowledgeMatches[0].score * 2, 30);
+                debugLog('知识库匹配加分: +' + Math.min(knowledgeMatches[0].score * 2, 30));
+            }
+
+            // 2. 基于回答长度（适中长度更好，最高15分）
+            const responseLength = aiResponse.length;
+            if (responseLength >= 100 && responseLength <= 500) {
+                confidence += 15;
+                debugLog('回答长度适中: +15');
+            } else if (responseLength >= 50 && responseLength < 1000) {
+                confidence += 10;
+                debugLog('回答长度可接受: +10');
+            }
+
+            // 3. 基于专业性词汇（最高10分）
+            const professionalTerms = ['建议', '推荐', '应该', '医学', '临床', '研究', '数据', '指南', '预防', '治疗', '症状', '诊断', '康复', '保健', '营养', '锻炼', '指标', '正常'];
+            let termCount = 0;
+            for (const term of professionalTerms) {
+                if (aiResponse.includes(term)) {
+                    termCount++;
+                }
+            }
+            confidence += Math.min(termCount * 2, 10);
+            debugLog('专业词汇加分: +' + Math.min(termCount * 2, 10));
+
+            // 4. 基于结构完整性（最高10分）
+            const hasNumbering = /\d+[\）\.\、]/.test(aiResponse);
+            const hasAdvice = /建议|推荐|应该|可以/.test(aiResponse);
+            const hasDisclaimer = /仅供参考|咨询医生|及时就医|遵医嘱/.test(aiResponse);
+
+            if (hasNumbering) confidence += 5;
+            if (hasAdvice) confidence += 3;
+            if (hasDisclaimer) confidence += 2;
+            debugLog('结构完整性加分: +' + ((hasNumbering ? 5 : 0) + (hasAdvice ? 3 : 0) + (hasDisclaimer ? 2 : 0)));
+
+            // 5. 基于查询清晰度（最高10分）
+            const queryLength = userQuery.length;
+            if (queryLength >= 5 && queryLength <= 50) {
+                confidence += 10;
+            } else if (queryLength >= 3 && queryLength <= 100) {
+                confidence += 5;
+            }
+            debugLog('查询清晰度加分: +' + (queryLength >= 5 && queryLength <= 50 ? 10 : queryLength >= 3 ? 5 : 0));
+
+            // 6. 扣分项
+            // 如果回答包含不确定词汇，适当扣分
+            const uncertainTerms = ['可能', '也许', '大概', '不确定', '不清楚'];
+            let uncertainCount = 0;
+            for (const term of uncertainTerms) {
+                if (aiResponse.includes(term)) {
+                    uncertainCount++;
+                }
+            }
+            confidence -= uncertainCount * 3;
+            debugLog('不确定词汇扣分: -' + (uncertainCount * 3));
+
+            // 确保置信度在0-100之间
+            confidence = Math.max(0, Math.min(100, confidence));
+            debugLog('最终置信度: ' + confidence + '%');
+
+            return confidence;
+        }
+
+        function getConfidenceLevel(confidence) {
+            if (confidence >= 75) return { level: 'high', label: '高', color: '#10b981' };
+            if (confidence >= 50) return { level: 'medium', label: '中', color: '#f59e0b' };
+            return { level: 'low', label: '低', color: '#ef4444' };
         }
 
         function testSound() {
@@ -1058,8 +1363,22 @@
                     debugLog('设置思考状态');
                 }
 
-                const response = await streamAIResponse(message);
-                addMessage('ai', response);
+                // 检索知识库
+                const knowledgeMatches = searchKnowledgeBase(message);
+                debugLog('知识库匹配数: ' + knowledgeMatches.length);
+
+                const response = await streamAIResponse(message, knowledgeMatches);
+
+                // 计算置信度
+                const confidence = calculateConfidence(message, response, knowledgeMatches);
+                debugLog('置信度计算完成: ' + confidence + '%');
+
+                // 添加消息，包含置信度和知识库引用
+                addMessage('ai', response, {
+                    confidence: confidence,
+                    knowledgeRefs: knowledgeMatches
+                });
+
                 debugLog('收到AI响应');
 
             } catch (error) {
@@ -1070,17 +1389,27 @@
         }
 
         // 流式AI响应
-        async function streamAIResponse(userMessage) {
+        async function streamAIResponse(userMessage, knowledgeMatches = []) {
             const apiKey = localStorage.getItem('modelscope_api_key');
 
             if (!apiKey) {
                 throw new Error('缺少魔搭API密钥');
             }
 
+            // 构建知识库上下文
+            let knowledgeContext = '';
+            if (knowledgeMatches.length > 0) {
+                knowledgeContext = '\n\n参考专业知识库：\n';
+                knowledgeMatches.forEach((item, index) => {
+                    knowledgeContext += `${index + 1}. ${item.title}（来源：${item.source}）：${item.content}\n`;
+                });
+                knowledgeContext += '\n请基于以上专业知识提供准确的建议。';
+            }
+
             const messages = [
                 {
                     role: 'system',
-                    content: '你是一个专业的健康咨询助手，名叫VON。你的职责是提供健康建议、医疗知识科普和健康咨询。注意：你的建议仅供参考，不能替代专业医生的诊断。对于严重疾病，请建议用户及时就医。请用友好、专业的语气回答问题，回答要简洁明了，重点突出。'
+                    content: '你是一个专业的健康咨询助手，名叫VON。你的职责是提供健康建议、医疗知识科普和健康咨询。注意：你的建议仅供参考，不能替代专业医生的诊断。对于严重疾病，请建议用户及时就医。请用友好、专业的语气回答问题，回答要简洁明了，重点突出。如果提供了专业知识库参考，请优先参考这些知识。' + knowledgeContext
                 },
                 ...conversationHistory.slice(-10),
                 {
@@ -1197,15 +1526,44 @@
         }
 
         // 消息管理
-        function addMessage(type, content) {
+        function addMessage(type, content, options = {}) {
             const container = document.getElementById('messages-container');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
 
             const senderName = type === 'user' ? '👤 您' : '🤖 VON健康助手';
+
+            let metaInfoHTML = '';
+            if (type === 'ai' && options.confidence !== undefined) {
+                const confidence = options.confidence;
+                const level = getConfidenceLevel(confidence);
+
+                metaInfoHTML = `
+                    <div class="meta-info">
+                        <div class="confidence-bar">
+                            <span class="confidence-label">可信度</span>
+                            <div class="confidence-track">
+                                <div class="confidence-fill ${level.level}" style="width: ${confidence}%"></div>
+                            </div>
+                            <span class="confidence-value" style="color: ${level.color}">${confidence}%</span>
+                        </div>
+                        ${options.knowledgeRefs && options.knowledgeRefs.length > 0 ? `
+                            <div class="knowledge-ref">
+                                <span class="icon">📚</span>
+                                <div class="content">
+                                    <div class="title">参考知识: ${options.knowledgeRefs[0].title}</div>
+                                    <div class="source">来源: ${options.knowledgeRefs[0].source}</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
             messageDiv.innerHTML = `
                 <div class="sender">${senderName}</div>
                 <div class="content">${content}</div>
+                ${metaInfoHTML}
             `;
             container.appendChild(messageDiv);
             container.scrollTop = container.scrollHeight;
