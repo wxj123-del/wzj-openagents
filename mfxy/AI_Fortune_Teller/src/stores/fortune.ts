@@ -10,6 +10,8 @@ export interface FortuneRecord {
   timestamp: number
   zodiac?: string
   cards?: string[]
+  confidence?: number // AI置信度 (0-100)
+  sources?: string[] // 知识库来源
 }
 
 export const useFortuneStore = defineStore('fortune', () => {

@@ -92,9 +92,17 @@ export const useAvatarStore = defineStore('avatar', () => {
 
         console.log('开始创建SDK实例，容器ID:', containerId)
         console.log('App ID:', keys.value.xingyun_appId)
+        console.log('传递给SDK的容器ID:', '#' + containerId)
+        console.log('容器元素:', container)
+        console.log('容器位置:', container.getBoundingClientRect())
+        console.log('容器父元素:', container.parentElement)
+
+        // 打印所有以avatar开头的元素
+        const allAvatarElements = document.querySelectorAll('[id*="avatar"]')
+        console.log('页面上所有包含avatar的ID元素:', allAvatarElements)
 
         sdkInstance.value = new XmovAvatar({
-          containerId: '#' + containerId,  // 添加#号前缀
+          containerId: '#' + containerId,  // SDK需要带#的选择器
           appId: keys.value.xingyun_appId,
           appSecret: keys.value.xingyun_appSecret,
           gatewayServer: 'https://nebula-agent.xingyun3d.com/user/v1/ttsa/session',
@@ -171,7 +179,18 @@ export const useAvatarStore = defineStore('avatar', () => {
       console.log('SDK实例类型:', typeof sdkInstance.value)
       console.log('SDK.init方法:', typeof sdkInstance.value.init)
 
-      // 检查init方法是否存在
+      // 记录初始化前的子元素
+      const containerBefore = document.getElementById('avatar-container')
+      if (containerBefore) {
+        console.log('初始化前容器子元素数量:', containerBefore.children.length)
+        console.log('初始化前容器子元素:', containerBefore.children)
+      }
+
+      // 检查是否SDK会创建新容器
+      const allCanvasesBefore = document.querySelectorAll('canvas')
+      console.log('初始化前页面所有canvas数量:', allCanvasesBefore.length)
+
+      // 检查状态变化
       if (typeof sdkInstance.value.init !== 'function') {
         throw new Error('SDK实例没有init方法')
       }
@@ -186,6 +205,27 @@ export const useAvatarStore = defineStore('avatar', () => {
       isConnected.value = true
       connectionError.value = ''
       console.log('SDK初始化成功')
+
+      // 初始化后检查canvas位置
+      setTimeout(() => {
+        const containerAfter = document.getElementById('avatar-container')
+        if (containerAfter) {
+          console.log('初始化后容器子元素数量:', containerAfter.children.length)
+          console.log('初始化后容器子元素:', containerAfter.children)
+          console.log('初始化后容器innerHTML:', containerAfter.innerHTML)
+        }
+
+        const allCanvasesAfter = document.querySelectorAll('canvas')
+        console.log('初始化后页面所有canvas数量:', allCanvasesAfter.length)
+
+        allCanvasesAfter.forEach((canvas, index) => {
+          console.log(`Canvas ${index}:`, canvas)
+          console.log(`  - 父元素:`, canvas.parentElement)
+          console.log(`  - 位置:`, canvas.getBoundingClientRect())
+          console.log(`  - 尺寸: ${canvas.width}x${canvas.height}`)
+        })
+      }, 2000)
+
       return true
     } catch (error) {
       console.error('初始化SDK失败:', error)

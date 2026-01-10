@@ -6,6 +6,13 @@ interface Message {
   content: string
 }
 
+// AI响应结构
+export interface AIResponse {
+  interpretation: string // 解读内容
+  confidence: number // 置信度 (0-100)
+  sources: string[] // 知识库来源
+}
+
 /**
  * 调用魔搭AI模型 - 流式响应（使用fetch API）
  */
@@ -136,6 +143,65 @@ export async function callModel(
 }
 
 /**
+ * 解析AI响应的JSON格式
+ */
+export function parseAIResponse(text: string): AIResponse | null {
+  try {
+    // 尝试提取JSON部分
+    let jsonText = text.trim()
+
+    // 如果包含```json标记，提取中间的JSON
+    const jsonMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/)
+    if (jsonMatch && jsonMatch[1]) {
+      jsonText = jsonMatch[1].trim()
+    }
+
+    // 尝试查找第一个{和最后一个}
+    const firstBrace = jsonText.indexOf('{')
+    const lastBrace = jsonText.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      jsonText = jsonText.substring(firstBrace, lastBrace + 1)
+    }
+
+    console.log('解析JSON:', jsonText)
+    const parsed = JSON.parse(jsonText)
+
+    // 验证结构
+    if (!parsed.interpretation || typeof parsed.interpretation !== 'string') {
+      console.error('JSON缺少interpretation字段')
+      return null
+    }
+
+    // 确保confidence是数字
+    if (typeof parsed.confidence !== 'number') {
+      parsed.confidence = 75 // 默认置信度
+    }
+    parsed.confidence = Math.min(100, Math.max(0, parsed.confidence))
+
+    // 确保sources是数组
+    if (!Array.isArray(parsed.sources)) {
+      parsed.sources = ['AI知识库']
+    }
+
+    return {
+      interpretation: parsed.interpretation,
+      confidence: parsed.confidence,
+      sources: parsed.sources
+    }
+  } catch (error) {
+    console.error('JSON解析失败:', error)
+    console.error('原始文本:', text)
+
+    // 降级处理：如果解析失败，返回原始文本作为interpretation
+    return {
+      interpretation: text,
+      confidence: 60,
+      sources: ['AI知识库']
+    }
+  }
+}
+
+/**
  * 生成塔罗牌解读Prompt
  */
 export function generateTarotPrompt(cards: string[], question: string): string {
@@ -149,7 +215,21 @@ export function generateTarotPrompt(cards: string[], question: string): string {
 2. 对问题的启示
 3. 建议和指引
 
-请用第一人称，让用户感受到你的关怀和智慧。`
+请用第一人称，让用户感受到你的关怀和智慧。
+
+**重要：请严格按照以下JSON格式返回回答，不要包含任何其他文字：**
+\`\`\`json
+{
+  "interpretation": "你的详细解读内容...",
+  "confidence": 85,
+  "sources": ["塔罗牌权威指南", "占星学原理", "心理学研究"]
+}
+\`\`\`
+
+其中：
+- interpretation: 详细解读内容（200-400字）
+- confidence: 解读置信度（0-100之间的整数，基于牌意与问题的相关性）
+- sources: 知识来源列表（3-5个，参考：塔罗牌经典著作、占星学理论、心理学原理等）`
 }
 
 /**
@@ -165,7 +245,21 @@ export function generateHoroscopePrompt(zodiac: string, period: string): string 
 4. 财运分析
 5. 幸运元素（数字、颜色、方位）
 
-请用温暖而神秘的语气，给予用户积极的力量和实用的建议。`
+请用温暖而神秘的语气，给予用户积极的力量和实用的建议。
+
+**重要：请严格按照以下JSON格式返回回答，不要包含任何其他文字：**
+\`\`\`json
+{
+  "interpretation": "你的详细运势分析...",
+  "confidence": 90,
+  "sources": ["西方占星学", "行星运行理论", "星座运势统计"]
+}
+\`\`\`
+
+其中：
+- interpretation: 详细运势分析（300-500字）
+- confidence: 预测置信度（0-100之间的整数，基于星座与当前星相的相关性）
+- sources: 知识来源列表（3-5个，参考：占星学经典、行星运行理论、统计分析等）`
 }
 
 /**
@@ -182,5 +276,19 @@ export function generatePsychologyPrompt(answers: string[]): string {
 3. 待提升方面
 4. 人生建议
 
-请用温和而专业的语气，让用户感受到被理解和支持。`
+请用温和而专业的语气，让用户感受到被理解和支持。
+
+**重要：请严格按照以下JSON格式返回回答，不要包含任何其他文字：**
+\`\`\`json
+{
+  "interpretation": "你的详细性格分析...",
+  "confidence": 88,
+  "sources": ["MBTI性格理论", "心理学经典研究", "人格心理学"]
+}
+\`\`\`
+
+其中：
+- interpretation: 详细性格分析（300-400字）
+- confidence: 分析置信度（0-100之间的整数，基于回答完整性和理论相关性）
+- sources: 知识来源列表（3-5个，参考：心理学理论、性格研究、学术文献等）`
 }

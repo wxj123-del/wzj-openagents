@@ -12,16 +12,16 @@
       <!-- 左侧:数字人竖屏容器 (占4列) -->
       <div class="lg:col-span-4">
         <div class="mystic-card p-4 sticky top-4">
-          <!-- 数字人竖屏容器 - 与simple-test.html保持一致 -->
+          <!-- 数字人竖屏容器 -->
           <div class="flex justify-center mb-4">
             <div
               id="avatar-container"
               ref="avatarContainerRef"
               style="
-                width: 360px;
+                width: 281px;
                 height: 500px;
                 position: relative;
-                overflow: visible;
+                overflow: hidden;
                 background: rgba(0, 0, 0, 0.3);
                 border: 2px solid rgba(107, 70, 193, 0.5);
                 border-radius: 12px;
@@ -197,6 +197,42 @@
             <!-- 右侧:解读结果 -->
             <div>
               <h3 class="text-lg font-bold text-mystic-gold mb-3">📜 塔罗解读</h3>
+
+              <!-- 置信度和知识库来源 -->
+              <div v-if="tarotConfidence !== undefined || tarotSources.length > 0" class="mb-3 p-3 bg-mystic-purple/20 rounded-lg">
+                <!-- 置信度显示 -->
+                <div v-if="tarotConfidence !== undefined" class="mb-2">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm text-gray-300">AI置信度</span>
+                    <span class="text-sm font-bold" :class="getConfidenceColor(tarotConfidence)">
+                      {{ tarotConfidence }}%
+                    </span>
+                  </div>
+                  <div class="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      class="h-full transition-all duration-500"
+                      :class="getConfidenceBarColor(tarotConfidence)"
+                      :style="{ width: tarotConfidence + '%' }"
+                    ></div>
+                  </div>
+                </div>
+
+                <!-- 知识库来源 -->
+                <div v-if="tarotSources.length > 0">
+                  <div class="text-sm text-gray-300 mb-1">📚 知识来源</div>
+                  <div class="flex flex-wrap gap-2">
+                    <span
+                      v-for="(source, index) in tarotSources"
+                      :key="index"
+                      class="px-2 py-1 bg-mystic-purple/40 rounded text-xs text-gray-200"
+                    >
+                      {{ source }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 解读内容 -->
               <div class="mystic-input min-h-[400px] max-h-[500px] overflow-y-auto">
                 <div v-if="tarotAiResponse" class="text-gray-200 whitespace-pre-wrap leading-relaxed">
                   {{ tarotAiResponse }}
@@ -219,7 +255,7 @@
               <!-- 星座选择 -->
               <div>
                 <label class="block text-gray-300 text-sm mb-2">选择您的星座</label>
-                <select v-model="selectedZodiac" class="mystic-input">
+                <select v-model="selectedZodiac" class="mystic-select">
                   <option value="">请选择星座</option>
                   <option v-for="sign in ZODIAC_SIGNS" :key="sign.name" :value="sign.name">
                     {{ sign.name }} ({{ sign.date }})
@@ -279,6 +315,42 @@
             <!-- 右侧:运势结果 -->
             <div>
               <h3 class="text-lg font-bold text-mystic-gold mb-3">🌟 运势详情</h3>
+
+              <!-- 置信度和知识库来源 -->
+              <div v-if="horoscopeConfidence !== undefined || horoscopeSources.length > 0" class="mb-3 p-3 bg-mystic-purple/20 rounded-lg">
+                <!-- 置信度显示 -->
+                <div v-if="horoscopeConfidence !== undefined" class="mb-2">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm text-gray-300">AI置信度</span>
+                    <span class="text-sm font-bold" :class="getConfidenceColor(horoscopeConfidence)">
+                      {{ horoscopeConfidence }}%
+                    </span>
+                  </div>
+                  <div class="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      class="h-full transition-all duration-500"
+                      :class="getConfidenceBarColor(horoscopeConfidence)"
+                      :style="{ width: horoscopeConfidence + '%' }"
+                    ></div>
+                  </div>
+                </div>
+
+                <!-- 知识库来源 -->
+                <div v-if="horoscopeSources.length > 0">
+                  <div class="text-sm text-gray-300 mb-1">📚 知识来源</div>
+                  <div class="flex flex-wrap gap-2">
+                    <span
+                      v-for="(source, index) in horoscopeSources"
+                      :key="index"
+                      class="px-2 py-1 bg-mystic-purple/40 rounded text-xs text-gray-200"
+                    >
+                      {{ source }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 运势内容 -->
               <div class="mystic-input min-h-[400px] max-h-[500px] overflow-y-auto">
                 <div v-if="horoscopeResult" class="text-gray-200 whitespace-pre-wrap leading-relaxed">
                   {{ horoscopeResult }}
@@ -312,10 +384,33 @@
                   <span class="text-xl">{{ typeIcon(record.type) }}</span>
                   <span class="text-mystic-gold font-semibold text-sm">{{ typeName(record.type) }}</span>
                 </div>
-                <span class="text-xs text-gray-400">{{ formatDate(record.timestamp) }}</span>
+                <div class="flex items-center gap-2">
+                  <!-- 置信度标签 -->
+                  <span v-if="record.confidence !== undefined"
+                    class="text-xs px-2 py-1 rounded font-bold"
+                    :class="[
+                      getConfidenceColor(record.confidence),
+                      getConfidenceBarBgColor(record.confidence) + ' bg-opacity-20'
+                    ]"
+                  >
+                    {{ record.confidence }}%
+                  </span>
+                  <span class="text-xs text-gray-400">{{ formatDate(record.timestamp) }}</span>
+                </div>
               </div>
               <div class="text-sm text-gray-200 mb-2">{{ record.question }}</div>
-              <div class="text-sm text-gray-300 line-clamp-3">{{ record.result }}</div>
+              <div class="text-sm text-gray-300 line-clamp-3 mb-2">{{ record.result }}</div>
+
+              <!-- 知识来源 -->
+              <div v-if="record.sources && record.sources.length > 0" class="flex flex-wrap gap-1 mt-2">
+                <span
+                  v-for="(source, index) in record.sources.slice(0, 3)"
+                  :key="index"
+                  class="px-2 py-0.5 bg-mystic-purple/30 rounded text-xs text-gray-400"
+                >
+                  {{ source }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -390,11 +485,12 @@
 </template>
 
 <script setup lang="ts">
+// AI占卜师 - 主页组件
 import { ref, onMounted, computed } from 'vue'
 import { useAvatarStore } from '@/stores/avatar'
 import { useFortuneStore } from '@/stores/fortune'
 import { loadAvatarSDK } from '@/services/avatarAPI'
-import { generateTarotPrompt, generateHoroscopePrompt, callModelStream } from '@/services/modelAPI'
+import { generateTarotPrompt, generateHoroscopePrompt, callModelStream, parseAIResponse } from '@/services/modelAPI'
 import { ZODIAC_SIGNS, TEST_KEYS, AVATAR_STATES } from '@/utils/constants'
 
 const avatarStore = useAvatarStore()
@@ -411,12 +507,16 @@ const tarotSpreadType = ref<'single' | 'three'>('single')
 const drawnTarotCards = ref<any[]>([])
 const tarotAiResponse = ref('')
 const tarotIsReading = ref(false)
+const tarotConfidence = ref<number | undefined>(undefined)
+const tarotSources = ref<string[]>([])
 
 // 星座运势状态
 const selectedZodiac = ref('')
 const horoscopePeriod = ref('今日')
 const horoscopeResult = ref('')
 const horoscopeIsLoading = ref(false)
+const horoscopeConfidence = ref<number | undefined>(undefined)
+const horoscopeSources = ref<string[]>([])
 
 // 设置状态
 const showKeyConfig = ref(false)
@@ -562,6 +662,8 @@ async function handleDrawCards() {
 
   tarotIsReading.value = true
   tarotAiResponse.value = ''
+  tarotConfidence.value = undefined
+  tarotSources.value = []
   drawnTarotCards.value = []
 
   // 抽牌
@@ -604,18 +706,48 @@ async function handleDrawCards() {
         tarotAiResponse.value = fullResponse
       },
       () => {
-        fortuneStore.addFortuneRecord({
-          id: Date.now().toString(),
-          type: 'tarot',
-          question: tarotQuestion.value,
-          result: fullResponse,
-          timestamp: Date.now(),
-          cards: cardNames
-        })
+        // 解析JSON响应
+        const parsed = parseAIResponse(fullResponse)
 
-        if (avatarStore.isConnected && fullResponse) {
-          avatarStore.setState('speak')
-          avatarStore.speak(fullResponse, true, true)
+        if (parsed) {
+          tarotAiResponse.value = parsed.interpretation
+          tarotConfidence.value = parsed.confidence
+          tarotSources.value = parsed.sources
+
+          // 保存到历史记录
+          fortuneStore.addFortuneRecord({
+            id: Date.now().toString(),
+            type: 'tarot',
+            question: tarotQuestion.value,
+            result: parsed.interpretation,
+            timestamp: Date.now(),
+            cards: cardNames,
+            confidence: parsed.confidence,
+            sources: parsed.sources
+          })
+
+          // 数字人播报
+          if (avatarStore.isConnected && parsed.interpretation) {
+            avatarStore.setState('speak')
+            avatarStore.speak(parsed.interpretation, true, true)
+          }
+        } else {
+          // 解析失败，使用原始响应
+          fortuneStore.addFortuneRecord({
+            id: Date.now().toString(),
+            type: 'tarot',
+            question: tarotQuestion.value,
+            result: fullResponse,
+            timestamp: Date.now(),
+            cards: cardNames,
+            confidence: 60,
+            sources: ['AI知识库']
+          })
+
+          if (avatarStore.isConnected && fullResponse) {
+            avatarStore.setState('speak')
+            avatarStore.speak(fullResponse, true, true)
+          }
         }
 
         tarotIsReading.value = false
@@ -640,6 +772,8 @@ async function handleQueryHoroscope() {
 
   horoscopeIsLoading.value = true
   horoscopeResult.value = ''
+  horoscopeConfidence.value = undefined
+  horoscopeSources.value = []
 
   if (avatarStore.isConnected) {
     avatarStore.setState('listen')
@@ -666,18 +800,48 @@ async function handleQueryHoroscope() {
         horoscopeResult.value = fullResponse
       },
       () => {
-        fortuneStore.addFortuneRecord({
-          id: Date.now().toString(),
-          type: 'horoscope',
-          question: `${selectedZodiac.value}${horoscopePeriod.value}运势`,
-          result: fullResponse,
-          timestamp: Date.now(),
-          zodiac: selectedZodiac.value
-        })
+        // 解析JSON响应
+        const parsed = parseAIResponse(fullResponse)
 
-        if (avatarStore.isConnected && fullResponse) {
-          avatarStore.setState('speak')
-          avatarStore.speak(fullResponse, true, true)
+        if (parsed) {
+          horoscopeResult.value = parsed.interpretation
+          horoscopeConfidence.value = parsed.confidence
+          horoscopeSources.value = parsed.sources
+
+          // 保存到历史记录
+          fortuneStore.addFortuneRecord({
+            id: Date.now().toString(),
+            type: 'horoscope',
+            question: `${selectedZodiac.value}${horoscopePeriod.value}运势`,
+            result: parsed.interpretation,
+            timestamp: Date.now(),
+            zodiac: selectedZodiac.value,
+            confidence: parsed.confidence,
+            sources: parsed.sources
+          })
+
+          // 数字人播报
+          if (avatarStore.isConnected && parsed.interpretation) {
+            avatarStore.setState('speak')
+            avatarStore.speak(parsed.interpretation, true, true)
+          }
+        } else {
+          // 解析失败，使用原始响应
+          fortuneStore.addFortuneRecord({
+            id: Date.now().toString(),
+            type: 'horoscope',
+            question: `${selectedZodiac.value}${horoscopePeriod.value}运势`,
+            result: fullResponse,
+            timestamp: Date.now(),
+            zodiac: selectedZodiac.value,
+            confidence: 60,
+            sources: ['AI知识库']
+          })
+
+          if (avatarStore.isConnected && fullResponse) {
+            avatarStore.setState('speak')
+            avatarStore.speak(fullResponse, true, true)
+          }
         }
 
         horoscopeIsLoading.value = false
@@ -751,16 +915,35 @@ function formatDate(timestamp: number): string {
   }
 }
 
+// 置信度颜色辅助函数
+function getConfidenceColor(confidence: number): string {
+  if (confidence >= 80) return 'text-green-400'
+  if (confidence >= 60) return 'text-yellow-400'
+  return 'text-red-400'
+}
+
+function getConfidenceBarColor(confidence: number): string {
+  if (confidence >= 80) return 'bg-gradient-to-r from-green-500 to-green-400'
+  if (confidence >= 60) return 'bg-gradient-to-r from-yellow-500 to-yellow-400'
+  return 'bg-gradient-to-r from-red-500 to-red-400'
+}
+
+function getConfidenceBarBgColor(confidence: number): string {
+  if (confidence >= 80) return 'bg-green-500'
+  if (confidence >= 60) return 'bg-yellow-500'
+  return 'bg-red-500'
+}
+
 // 密钥管理
 function saveKeys() {
-  avatarStore.setKeys(localKeys.value)
+  avatarStore.updateKeys(localKeys.value)
   showKeyConfig.value = false
   alert('密钥已保存')
 }
 
 function useTestKeys() {
   localKeys.value = { ...TEST_KEYS }
-  avatarStore.setKeys(TEST_KEYS)
+  avatarStore.updateKeys(TEST_KEYS)
   alert('已使用测试密钥')
 }
 

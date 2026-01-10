@@ -16,6 +16,22 @@
     @apply w-full px-4 py-3 bg-white/5 border border-mystic-purple/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-mystic-gold focus:ring-2 focus:ring-mystic-gold/50;
   }
 
+  .mystic-input option {
+    @apply bg-gray-900 text-gray-200;
+  }
+
+  .mystic-select {
+    @apply w-full px-4 py-3 bg-gray-900/80 border border-mystic-purple/40 rounded-lg text-white focus:outline-none focus:border-mystic-gold focus:ring-2 focus:ring-mystic-gold/50 cursor-pointer;
+  }
+
+  .mystic-select option {
+    @apply bg-gray-800 text-gray-200;
+  }
+
+  .mystic-select option:hover {
+    @apply bg-mystic-purple/30;
+  }
+
   .mystic-title {
     @apply text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-mystic-gold to-yellow-300;
   }
